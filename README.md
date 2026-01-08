@@ -1,52 +1,262 @@
-# rust-ai-driven-development-pipeline-template
+# Network Isomorphism Solver
 
-A comprehensive template for AI-driven Rust development with full CI/CD pipeline support.
+A Rust library for determining network isomorphism using Links Theory concepts. This solver can check if two networks are structurally identical (isomorphic), find all automorphisms (symmetries), and detect subnetwork patterns.
 
-[![CI/CD Pipeline](https://github.com/link-foundation/rust-ai-driven-development-pipeline-template/workflows/CI%2FCD%20Pipeline/badge.svg)](https://github.com/link-foundation/rust-ai-driven-development-pipeline-template/actions)
+[![CI/CD Pipeline](https://github.com/link-foundation/network-isomorphism-solver/workflows/CI%2FCD%20Pipeline/badge.svg)](https://github.com/link-foundation/network-isomorphism-solver/actions)
 [![Rust Version](https://img.shields.io/badge/rust-1.70%2B-blue.svg)](https://www.rust-lang.org/)
 [![License: Unlicense](https://img.shields.io/badge/license-Unlicense-blue.svg)](http://unlicense.org/)
 
+## Overview
+
+Network isomorphism is a fundamental problem in computer science with applications across many domains:
+
+- **Drug Discovery**: Comparing molecular structures to find similar compounds
+- **Circuit Verification**: Checking if two circuit designs are functionally equivalent
+- **Computer Vision**: Pattern matching in image recognition
+- **Social Network Analysis**: Detecting community structures and fraud patterns
+- **Cryptography**: Zero-knowledge proofs and graph-based cryptographic systems
+
+This library uses **Links Theory** concepts where networks are represented as collections of doublet-links (ordered pairs of source and target nodes), following the L → L² formula where "a link connects links".
+
 ## Features
 
-- **Rust stable support**: Works with Rust stable version
-- **Cross-platform testing**: CI runs on Ubuntu, macOS, and Windows
-- **Comprehensive testing**: Unit tests, integration tests, and doc tests
-- **Code quality**: rustfmt + Clippy with pedantic lints
-- **Pre-commit hooks**: Automated code quality checks before commits
-- **CI/CD pipeline**: GitHub Actions with multi-platform support
-- **Changelog management**: Fragment-based changelog (like Changesets/Scriv)
-- **Release automation**: Automatic GitHub releases
+- **Isomorphism Detection**: Check if two networks have identical structure
+- **Mapping Discovery**: Find the exact node-to-node correspondence between isomorphic networks
+- **Automorphism Analysis**: Discover all symmetries within a network
+- **Subnetwork Matching**: Find if one network contains another as a pattern
+- **Links Notation Support**: Parse human-readable network descriptions
+- **Weisfeiler-Lehman Algorithm**: Efficient canonical labeling for pruning the search space
+
+## Installation
+
+Add to your `Cargo.toml`:
+
+```toml
+[dependencies]
+network-isomorphism-solver = "0.2.0"
+```
 
 ## Quick Start
 
-### Using This Template
+```rust
+use network_isomorphism_solver::{LinkNetwork, check_isomorphism};
 
-1. Click "Use this template" on GitHub to create a new repository
-2. Clone your new repository
-3. Update `Cargo.toml` with your package name and description
-4. Rename the library and binary in `Cargo.toml`
-5. Update imports in tests and examples
-6. Build and start developing!
+// Create two networks using Links Notation
+let benzene1 = LinkNetwork::from_notation("
+    C1 connects C2
+    C2 connects C3
+    C3 connects C4
+    C4 connects C5
+    C5 connects C6
+    C6 connects C1
+");
 
-### Development Setup
+let benzene2 = LinkNetwork::from_notation("
+    A connects B
+    B connects C
+    C connects D
+    D connects E
+    E connects F
+    F connects A
+");
 
-```bash
-# Clone the repository
-git clone https://github.com/link-foundation/rust-ai-driven-development-pipeline-template.git
-cd rust-ai-driven-development-pipeline-template
+// Check if they are isomorphic
+let result = check_isomorphism(&benzene1, &benzene2);
 
-# Build the project
-cargo build
-
-# Run tests
-cargo test
-
-# Run the example binary
-cargo run
-
-# Run an example
-cargo run --example basic_usage
+if result.is_isomorphic {
+    println!("Networks are isomorphic!");
+    if let Some(mapping) = result.mapping {
+        println!("Node mapping: {:?}", mapping);
+    }
+}
 ```
+
+## API Reference
+
+### Core Types
+
+#### `DoubletLink`
+A link connecting two nodes (source → target).
+
+```rust
+pub struct DoubletLink {
+    pub source: LinkId,
+    pub target: LinkId,
+}
+```
+
+#### `LinkNetwork`
+A network represented as a collection of doublet-links.
+
+```rust
+impl LinkNetwork {
+    /// Create an empty network
+    pub fn new() -> Self;
+
+    /// Parse from Links Notation
+    pub fn from_notation(notation: &str) -> Self;
+
+    /// Add a link between two nodes
+    pub fn add_link(&mut self, source: LinkId, target: LinkId);
+
+    /// Get node and link counts
+    pub fn node_count(&self) -> usize;
+    pub fn link_count(&self) -> usize;
+
+    /// Get degree of a node
+    pub fn degree(&self, node: LinkId) -> usize;
+
+    /// Get sorted degree sequence
+    pub fn degree_sequence(&self) -> Vec<usize>;
+}
+```
+
+#### `IsomorphismResult`
+Result of an isomorphism check.
+
+```rust
+pub struct IsomorphismResult {
+    pub is_isomorphic: bool,
+    pub mapping: Option<HashMap<LinkId, LinkId>>,
+}
+```
+
+### Functions
+
+#### `is_isomorphic(network1, network2) -> bool`
+Quick check if two networks are isomorphic.
+
+```rust
+use network_isomorphism_solver::{LinkNetwork, is_isomorphic};
+
+let net1 = LinkNetwork::from_notation("A connects B, B connects C");
+let net2 = LinkNetwork::from_notation("X connects Y, Y connects Z");
+
+assert!(is_isomorphic(&net1, &net2));
+```
+
+#### `check_isomorphism(network1, network2) -> IsomorphismResult`
+Check isomorphism and return the node mapping if found.
+
+```rust
+use network_isomorphism_solver::{LinkNetwork, check_isomorphism};
+
+let result = check_isomorphism(&net1, &net2);
+if let Some(mapping) = result.mapping {
+    // mapping: {A: X, B: Y, C: Z}
+}
+```
+
+#### `find_automorphisms(network) -> Vec<HashMap<LinkId, LinkId>>`
+Find all automorphisms (symmetries) of a network.
+
+```rust
+use network_isomorphism_solver::{LinkNetwork, find_automorphisms};
+
+// Square has 8 automorphisms (rotations + reflections)
+let square = LinkNetwork::from_notation("
+    A connects B, B connects C, C connects D, D connects A
+");
+let autos = find_automorphisms(&square);
+assert_eq!(autos.len(), 8);
+```
+
+#### `contains_subnetwork(haystack, needle) -> bool`
+Check if a network contains another as a subnetwork pattern.
+
+```rust
+use network_isomorphism_solver::{LinkNetwork, contains_subnetwork};
+
+let molecule = LinkNetwork::from_notation("
+    C1 connects C2, C2 connects C3, C3 connects C4,
+    C4 connects C5, C5 connects C6, C6 connects C1,
+    C1 connects O
+");
+
+let ring = LinkNetwork::from_notation("
+    A connects B, B connects C, C connects D,
+    D connects E, E connects F, F connects A
+");
+
+assert!(contains_subnetwork(&molecule, &ring));
+```
+
+## Real-World Use Cases
+
+### Drug Discovery
+Compare molecular structures to find similar compounds:
+
+```rust
+let aspirin = LinkNetwork::from_notation("
+    benzene connects carboxyl
+    carboxyl connects acetyl
+");
+
+let candidate = LinkNetwork::from_notation("
+    ring connects acid
+    acid connects ester
+");
+
+if is_isomorphic(&aspirin, &candidate) {
+    println!("Potential drug candidate found!");
+}
+```
+
+### Circuit Verification
+Verify that optimized circuits maintain functional equivalence:
+
+```rust
+let original = LinkNetwork::from_notation("
+    input1 connects gate
+    input2 connects gate
+    gate connects output
+");
+
+let optimized = LinkNetwork::from_notation("
+    A connects X
+    B connects X
+    X connects Y
+");
+
+assert!(is_isomorphic(&original, &optimized));
+```
+
+### Social Network Analysis
+Detect fraud patterns in transaction networks:
+
+```rust
+let fraud_pattern = LinkNetwork::from_notation("
+    hub connects node1
+    hub connects node2
+    hub connects node3
+");
+
+if contains_subnetwork(&transaction_graph, &fraud_pattern) {
+    println!("Potential fraud detected!");
+}
+```
+
+## Algorithm
+
+The solver uses a combination of techniques:
+
+1. **Quick Rejection**: Compare node counts, link counts, and degree sequences
+2. **Weisfeiler-Lehman Refinement**: Compute canonical node signatures for pruning
+3. **Backtracking Search**: Systematically explore valid node mappings
+4. **Constraint Propagation**: Use degree and adjacency constraints to prune search
+
+The Weisfeiler-Lehman algorithm iteratively refines node labels based on neighborhood structure, creating signatures that help identify potentially equivalent nodes.
+
+## Links Theory Background
+
+This library is inspired by [Links Theory](https://habr.com/ru/articles/903430/), which represents all data as doublet-links following the formula **L → L²** (a link connects links).
+
+Key concepts:
+- **Doublet-Link**: An ordered pair (source, target) representing a connection
+- **Link Network**: A collection of doublet-links forming a structure
+- **Links Notation (LiNo)**: Human-readable format for describing networks
+
+## Development
 
 ### Running Tests
 
@@ -54,233 +264,37 @@ cargo run --example basic_usage
 # Run all tests
 cargo test
 
-# Run tests with verbose output
-cargo test --verbose
-
-# Run doc tests
-cargo test --doc
-
-# Run a specific test
-cargo test test_add_positive_numbers
-
-# Run tests with output
+# Run with verbose output
 cargo test -- --nocapture
+
+# Run specific test module
+cargo test drug_discovery
+cargo test circuit_verification
 ```
 
-### Code Quality Checks
+### Code Quality
 
 ```bash
 # Format code
 cargo fmt
 
-# Check formatting (CI style)
-cargo fmt --check
-
-# Run Clippy lints
+# Run lints
 cargo clippy --all-targets --all-features
 
-# Check file size limits
-node scripts/check-file-size.mjs
-
 # Run all checks
-cargo fmt --check && cargo clippy --all-targets --all-features && node scripts/check-file-size.mjs
+cargo fmt --check && cargo clippy --all-targets --all-features && cargo test
 ```
-
-## Project Structure
-
-```
-.
-├── .github/
-│   └── workflows/
-│       └── release.yml         # CI/CD pipeline configuration
-├── changelog.d/                # Changelog fragments
-│   ├── README.md               # Fragment instructions
-│   └── *.md                    # Individual changelog entries
-├── examples/
-│   └── basic_usage.rs          # Usage examples
-├── scripts/
-│   ├── bump-version.mjs        # Version bumping utility
-│   ├── check-file-size.mjs     # File size validation script
-│   ├── collect-changelog.mjs   # Changelog collection script
-│   ├── create-github-release.mjs # GitHub release creation
-│   ├── detect-code-changes.mjs # Detects code changes for CI
-│   ├── get-bump-type.mjs       # Determines version bump type
-│   └── version-and-commit.mjs  # CI/CD version management
-├── src/
-│   ├── lib.rs                  # Library entry point
-│   └── main.rs                 # Binary entry point
-├── tests/
-│   └── integration_test.rs     # Integration tests
-├── .gitignore                  # Git ignore patterns
-├── .pre-commit-config.yaml     # Pre-commit hooks configuration
-├── Cargo.toml                  # Project configuration
-├── CHANGELOG.md                # Project changelog
-├── CONTRIBUTING.md             # Contribution guidelines
-├── LICENSE                     # Unlicense (public domain)
-└── README.md                   # This file
-```
-
-## Design Choices
-
-### Code Quality Tools
-
-- **rustfmt**: Standard Rust code formatter
-  - Ensures consistent code style across the project
-  - Configured to run on all Rust files
-
-- **Clippy**: Rust linter with comprehensive checks
-  - Pedantic and nursery lints enabled for strict code quality
-  - Catches common mistakes and suggests improvements
-  - Enforces best practices
-
-- **Pre-commit hooks**: Automated checks before each commit
-  - Runs rustfmt to ensure formatting
-  - Runs Clippy to catch issues early
-  - Runs tests to prevent broken commits
-
-### Testing Strategy
-
-The template supports multiple levels of testing:
-
-- **Unit tests**: In `src/lib.rs` using `#[cfg(test)]` modules
-- **Integration tests**: In `tests/` directory
-- **Doc tests**: In documentation examples using `///` comments
-- **Examples**: In `examples/` directory (also serve as documentation)
-
-### Changelog Management
-
-This template uses a fragment-based changelog system similar to:
-- [Changesets](https://github.com/changesets/changesets) (JavaScript)
-- [Scriv](https://scriv.readthedocs.io/) (Python)
-
-Benefits:
-- **No merge conflicts**: Multiple PRs can add fragments without conflicts
-- **Per-PR documentation**: Each PR documents its own changes
-- **Automated collection**: Fragments are collected during release
-- **Consistent format**: Template ensures consistent changelog entries
-
-```bash
-# Create a changelog fragment
-touch changelog.d/$(date +%Y%m%d_%H%M%S)_my_change.md
-
-# Edit the fragment to document your changes
-```
-
-### CI/CD Pipeline
-
-The GitHub Actions workflow provides:
-
-1. **Linting**: rustfmt and Clippy checks
-2. **Changelog check**: Warns if PRs are missing changelog fragments
-3. **Test matrix**: 3 OS (Ubuntu, macOS, Windows) with Rust stable
-4. **Building**: Release build and package validation
-5. **Release**: Automated GitHub releases when version changes
-
-### Release Automation
-
-The release workflow supports:
-
-- **Auto-release**: Automatically creates releases when version in Cargo.toml changes
-- **Manual release**: Trigger releases via workflow_dispatch with version bump type
-- **Changelog collection**: Automatically collects fragments during release
-- **GitHub releases**: Automatic creation with CHANGELOG content
-
-## Configuration
-
-### Updating Package Name
-
-After creating a repository from this template:
-
-1. Update `Cargo.toml`:
-   - Change `name` field
-   - Update `repository` and `documentation` URLs
-   - Change `[lib]` and `[[bin]]` names
-
-2. Rename the crate in imports:
-   - `tests/integration_test.rs`
-   - `examples/basic_usage.rs`
-   - `src/main.rs`
-
-### Clippy Configuration
-
-Clippy is configured in `Cargo.toml` under `[lints.clippy]`:
-
-- Pedantic lints enabled for strict code quality
-- Nursery lints enabled for additional checks
-- Some common patterns allowed (e.g., `module_name_repetitions`)
-
-### rustfmt Configuration
-
-Uses default rustfmt settings. To customize, create a `rustfmt.toml`:
-
-```toml
-edition = "2021"
-max_width = 100
-tab_spaces = 4
-```
-
-## Scripts Reference
-
-| Script                              | Description                    |
-| ----------------------------------- | ------------------------------ |
-| `cargo test`                        | Run all tests                  |
-| `cargo fmt`                         | Format code                    |
-| `cargo clippy`                      | Run lints                      |
-| `cargo run --example basic_usage`   | Run example                    |
-| `node scripts/check-file-size.mjs`  | Check file size limits         |
-| `node scripts/bump-version.mjs`     | Bump version                   |
-
-## Example Usage
-
-```rust
-use my_package::{add, multiply, delay};
-
-#[tokio::main]
-async fn main() {
-    // Basic arithmetic
-    let sum = add(2, 3);     // 5
-    let product = multiply(2, 3);  // 6
-
-    println!("2 + 3 = {sum}");
-    println!("2 * 3 = {product}");
-
-    // Async operations
-    delay(1.0).await;  // Wait for 1 second
-}
-```
-
-See `examples/basic_usage.rs` for more examples.
 
 ## Contributing
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-### Development Workflow
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/my-feature`
-3. Make your changes and add tests
-4. Run quality checks: `cargo fmt && cargo clippy && cargo test`
-5. Add a changelog fragment
-6. Commit your changes (pre-commit hooks will run automatically)
-7. Push and create a Pull Request
-
 ## License
 
 [Unlicense](LICENSE) - Public Domain
 
-This is free and unencumbered software released into the public domain. See [LICENSE](LICENSE) for details.
-
 ## Acknowledgments
 
-Inspired by:
-- [js-ai-driven-development-pipeline-template](https://github.com/link-foundation/js-ai-driven-development-pipeline-template)
-- [python-ai-driven-development-pipeline-template](https://github.com/link-foundation/python-ai-driven-development-pipeline-template)
-
-## Resources
-
-- [Rust Book](https://doc.rust-lang.org/book/)
-- [Cargo Book](https://doc.rust-lang.org/cargo/)
-- [Clippy Documentation](https://rust-lang.github.io/rust-clippy/)
-- [rustfmt Documentation](https://rust-lang.github.io/rustfmt/)
-- [Pre-commit Documentation](https://pre-commit.com/)
+- Inspired by [Links Theory](https://habr.com/ru/articles/903430/) by Konstantin Encyclopedist
+- Uses concepts from the [Weisfeiler-Lehman graph isomorphism test](https://en.wikipedia.org/wiki/Weisfeiler_Leman_graph_isomorphism_test)
+- Related projects: [links-notation](https://crates.io/crates/links-notation), [links-client](https://crates.io/crates/links-client)

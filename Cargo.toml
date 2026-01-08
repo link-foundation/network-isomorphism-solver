@@ -1,22 +1,22 @@
 [package]
-name = "my-package"
-version = "0.1.0"
+name = "network-isomorphism-solver"
+version = "0.2.0"
 edition = "2021"
-description = "A Rust package template for AI-driven development"
+description = "Network isomorphism solver using Links Theory - determines if two networks are structurally identical"
 readme = "README.md"
 license = "Unlicense"
-keywords = ["template", "rust", "ai-driven"]
-categories = ["development-tools"]
-repository = "https://github.com/link-foundation/rust-ai-driven-development-pipeline-template"
-documentation = "https://github.com/link-foundation/rust-ai-driven-development-pipeline-template"
+keywords = ["isomorphism", "links-theory", "graph", "network", "algorithm"]
+categories = ["algorithms", "science", "data-structures"]
+repository = "https://github.com/link-foundation/network-isomorphism-solver"
+documentation = "https://github.com/link-foundation/network-isomorphism-solver"
 rust-version = "1.70"
 
 [lib]
-name = "my_package"
+name = "network_isomorphism_solver"
 path = "src/lib.rs"
 
 [[bin]]
-name = "my-package"
+name = "network-isomorphism-solver"
 path = "src/main.rs"
 
 [dependencies]
@@ -38,6 +38,8 @@ module_name_repetitions = "allow"
 too_many_lines = "allow"
 missing_errors_doc = "allow"
 missing_panics_doc = "allow"
+too_many_arguments = "allow"
+missing_const_for_fn = "allow"
 
 [profile.release]
 lto = true
