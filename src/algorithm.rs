@@ -14,10 +14,7 @@ struct NodeSignature {
 
 /// Computes node signatures using the Weisfeiler-Lehman algorithm.
 /// This is a powerful heuristic for distinguishing non-isomorphic networks.
-pub fn compute_wl_signatures(
-    network: &LinkNetwork,
-    iterations: usize,
-) -> HashMap<LinkId, u64> {
+pub fn compute_wl_signatures(network: &LinkNetwork, iterations: usize) -> HashMap<LinkId, u64> {
     let mut labels: HashMap<LinkId, u64> = network
         .nodes()
         .iter()
