@@ -806,3 +806,127 @@ mod version_tests {
         assert!(VERSION.starts_with("0."));
     }
 }
+
+// =============================================================================
+// Links Notation (LiNo) Crate Integration Tests
+// =============================================================================
+
+mod lino_integration {
+    use super::*;
+
+    /// Test: Parse doublet format using links-notation crate
+    #[test]
+    fn test_from_lino_doublet_format() {
+        let network = LinkNetwork::from_lino("(1 2) (2 3) (3 1)").unwrap();
+        assert_eq!(network.node_count(), 3);
+        assert_eq!(network.link_count(), 3);
+    }
+
+    /// Test: Parse named links with identifiers
+    #[test]
+    fn test_from_lino_named_links() {
+        let network = LinkNetwork::from_lino("(bond1: A B) (bond2: B C) (bond3: C A)").unwrap();
+        assert_eq!(network.node_count(), 3);
+        assert_eq!(network.link_count(), 3);
+    }
+
+    /// Test: Parse triplet format (source relation target)
+    #[test]
+    fn test_from_lino_triplet_format() {
+        let network = LinkNetwork::from_lino("(A connects B) (B connects C)").unwrap();
+        assert_eq!(network.node_count(), 3);
+        assert_eq!(network.link_count(), 2);
+    }
+
+    /// Test: Isomorphism between `from_lino` and `from_notation` results
+    #[test]
+    fn test_from_lino_isomorphic_to_from_notation() {
+        let lino_network = LinkNetwork::from_lino("(A B) (B C) (C A)").unwrap();
+        let notation_network =
+            LinkNetwork::from_notation("A connects B\nB connects C\nC connects A");
+
+        assert!(is_isomorphic(&lino_network, &notation_network));
+    }
+
+    /// Test: Isomorphism between different `LiNo` representations
+    #[test]
+    fn test_from_lino_different_representations() {
+        let network1 = LinkNetwork::from_lino("(1 2) (2 3) (3 1)").unwrap();
+        let network2 = LinkNetwork::from_lino("(A B) (B C) (C A)").unwrap();
+        let network3 = LinkNetwork::from_lino("(bond1: X Y) (bond2: Y Z) (bond3: Z X)").unwrap();
+
+        assert!(is_isomorphic(&network1, &network2));
+        assert!(is_isomorphic(&network2, &network3));
+        assert!(is_isomorphic(&network1, &network3));
+    }
+
+    /// Test: Empty `LiNo` input
+    #[test]
+    fn test_from_lino_empty_input() {
+        // Single reference should result in empty network (no doublets)
+        let network = LinkNetwork::from_lino("ref").unwrap();
+        assert_eq!(network.node_count(), 0);
+        assert_eq!(network.link_count(), 0);
+    }
+
+    /// Test: Complex nested `LiNo` structure
+    #[test]
+    fn test_from_lino_nested_structure() {
+        // Nested structure: ((A B) (B C) (C A))
+        let network = LinkNetwork::from_lino("((A B) (B C) (C A))").unwrap();
+        assert_eq!(network.node_count(), 3);
+        assert_eq!(network.link_count(), 3);
+    }
+
+    /// Test: Parse error handling
+    #[test]
+    fn test_from_lino_parse_error() {
+        // Unclosed parenthesis should cause an error
+        let result = LinkNetwork::from_lino("(unclosed");
+        assert!(result.is_err());
+    }
+
+    /// Test: Real-world molecular structure in `LiNo` format
+    #[test]
+    fn test_from_lino_molecular_structure() {
+        // Benzene ring in LiNo doublet format
+        let benzene =
+            LinkNetwork::from_lino("(C1 C2) (C2 C3) (C3 C4) (C4 C5) (C5 C6) (C6 C1)").unwrap();
+
+        assert_eq!(benzene.node_count(), 6);
+        assert_eq!(benzene.link_count(), 6);
+
+        // Should have 12 automorphisms (D6 symmetry)
+        let automorphisms = find_automorphisms(&benzene);
+        assert_eq!(automorphisms.len(), 12);
+    }
+
+    /// Test: Circuit in `LiNo` format
+    #[test]
+    fn test_from_lino_circuit() {
+        let circuit1 = LinkNetwork::from_lino("(input1 gate) (input2 gate) (gate output)").unwrap();
+        let circuit2 = LinkNetwork::from_lino("(A X) (B X) (X Z)").unwrap();
+
+        assert!(is_isomorphic(&circuit1, &circuit2));
+    }
+
+    /// Test: Subnetwork detection with LiNo-parsed networks
+    #[test]
+    fn test_from_lino_subnetwork_detection() {
+        let full_network = LinkNetwork::from_lino("(A B) (B C) (C D) (D A) (A C)").unwrap();
+
+        let triangle_pattern = LinkNetwork::from_lino("(X Y) (Y Z) (Z X)").unwrap();
+
+        assert!(contains_subnetwork(&full_network, &triangle_pattern));
+    }
+
+    /// Test: Re-exported `links_notation` module access
+    #[test]
+    fn test_links_notation_reexport() {
+        // Users should be able to access the links-notation crate directly
+        use network_isomorphism_solver::links_notation::parse_lino;
+
+        let parsed = parse_lino("(A B)").unwrap();
+        assert!(parsed.is_link());
+    }
+}

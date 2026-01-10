@@ -1,7 +1,7 @@
 //! Network Isomorphism Solver CLI
 //!
 //! A command-line tool demonstrating network isomorphism detection
-//! using Links Theory.
+//! using Links Theory and Links Notation (`LiNo`).
 
 use network_isomorphism_solver::{
     check_isomorphism, contains_subnetwork, find_automorphisms, is_isomorphic, LinkNetwork,
@@ -12,7 +12,8 @@ fn main() {
         "Network Isomorphism Solver v{}",
         network_isomorphism_solver::VERSION
     );
-    println!("Based on Links Theory: https://habr.com/en/articles/895896\n");
+    println!("Based on Links Theory: https://habr.com/en/articles/895896");
+    println!("Using links-notation crate: https://crates.io/crates/links-notation\n");
 
     // Example 1: Drug Discovery - Comparing molecular structures
     println!("=== Example 1: Drug Discovery ===");
@@ -156,6 +157,42 @@ fn main() {
         contains_subnetwork(&image_structure, &edge_pattern)
     );
 
+    // Example 6: Links Notation (LiNo) parsing
+    println!("=== Example 6: Links Notation (LiNo) Parsing ===");
+    println!("Using the links-notation crate for standard LiNo format\n");
+
+    // Parse using from_lino with the links-notation crate
+    let network1 = LinkNetwork::from_lino("(1 2) (2 3) (3 1)").expect("Failed to parse LiNo");
+    let network2 = LinkNetwork::from_lino("(A B) (B C) (C A)").expect("Failed to parse LiNo");
+
+    println!(
+        "Network 1 from LiNo '(1 2) (2 3) (3 1)': {} nodes, {} links",
+        network1.node_count(),
+        network1.link_count()
+    );
+    println!(
+        "Network 2 from LiNo '(A B) (B C) (C A)': {} nodes, {} links",
+        network2.node_count(),
+        network2.link_count()
+    );
+    println!(
+        "Networks are isomorphic: {}\n",
+        is_isomorphic(&network1, &network2)
+    );
+
+    // Parse named links
+    let named_network = LinkNetwork::from_lino("(bond1: C1 C2) (bond2: C2 C3) (bond3: C3 C1)")
+        .expect("Failed to parse named LiNo");
+    println!(
+        "Named links network: {} nodes, {} links",
+        named_network.node_count(),
+        named_network.link_count()
+    );
+    println!(
+        "Named network isomorphic to network1: {}\n",
+        is_isomorphic(&network1, &named_network)
+    );
+
     println!("=== Summary ===");
     println!("The network isomorphism solver successfully demonstrated:");
     println!("1. Molecular structure comparison (drug discovery)");
@@ -163,6 +200,8 @@ fn main() {
     println!("3. Fraud pattern detection in social networks");
     println!("4. Symmetry analysis for cryptographic applications");
     println!("5. Pattern matching for computer vision");
+    println!("6. Links Notation (LiNo) parsing with links-notation crate");
     println!("\nAll examples use Links Theory's doublet-link representation");
     println!("where L -> L^2 (a link connects links).");
+    println!("\nLinks Notation library: https://github.com/link-foundation/links-notation");
 }

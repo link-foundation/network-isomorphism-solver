@@ -1,10 +1,11 @@
 # Network Isomorphism Solver
 
-A Rust library for determining network isomorphism using Links Theory concepts. This solver can check if two networks are structurally identical (isomorphic), find all automorphisms (symmetries), and detect subnetwork patterns.
+A Rust library for determining network isomorphism using [Links Theory](https://habr.com/en/articles/895896) concepts. This solver can check if two networks are structurally identical (isomorphic), find all automorphisms (symmetries), and detect subnetwork patterns.
 
 [![CI/CD Pipeline](https://github.com/link-foundation/network-isomorphism-solver/workflows/CI%2FCD%20Pipeline/badge.svg)](https://github.com/link-foundation/network-isomorphism-solver/actions)
 [![Rust Version](https://img.shields.io/badge/rust-1.70%2B-blue.svg)](https://www.rust-lang.org/)
 [![License: Unlicense](https://img.shields.io/badge/license-Unlicense-blue.svg)](http://unlicense.org/)
+[![crates.io](https://img.shields.io/crates/v/links-notation.svg?label=links-notation)](https://crates.io/crates/links-notation)
 
 ## Overview
 
@@ -24,7 +25,7 @@ This library uses **Links Theory** concepts where networks are represented as co
 - **Mapping Discovery**: Find the exact node-to-node correspondence between isomorphic networks
 - **Automorphism Analysis**: Discover all symmetries within a network
 - **Subnetwork Matching**: Find if one network contains another as a pattern
-- **Links Notation Support**: Parse human-readable network descriptions
+- **Links Notation (LiNo) Support**: Parse networks using the standard [`links-notation`](https://crates.io/crates/links-notation) crate
 - **Weisfeiler-Lehman Algorithm**: Efficient canonical labeling for pruning the search space
 
 ## Installation
@@ -71,6 +72,30 @@ if result.is_isomorphic {
 }
 ```
 
+## Using Links Notation (LiNo)
+
+This library integrates with the [`links-notation`](https://crates.io/crates/links-notation) crate for parsing standard LiNo format:
+
+```rust
+use network_isomorphism_solver::{LinkNetwork, is_isomorphic};
+
+// Parse LiNo doublet format: (source target)
+let network1 = LinkNetwork::from_lino("(1 2) (2 3) (3 1)").unwrap();
+let network2 = LinkNetwork::from_lino("(A B) (B C) (C A)").unwrap();
+
+assert!(is_isomorphic(&network1, &network2));
+
+// Parse named links with identifiers
+let named = LinkNetwork::from_lino("(bond1: C1 C2) (bond2: C2 C3) (bond3: C3 C1)").unwrap();
+assert!(is_isomorphic(&network1, &named));
+
+// Parse triplet format: (source relation target)
+let triplet = LinkNetwork::from_lino("(A connects B) (B connects C) (C connects A)").unwrap();
+assert!(is_isomorphic(&network1, &triplet));
+```
+
+The `from_lino` method provides proper parsing using the official LiNo grammar from the [link-foundation/links-notation](https://github.com/link-foundation/links-notation) repository.
+
 ## API Reference
 
 ### Core Types
@@ -93,8 +118,11 @@ impl LinkNetwork {
     /// Create an empty network
     pub fn new() -> Self;
 
-    /// Parse from Links Notation
+    /// Parse from simple text notation (legacy)
     pub fn from_notation(notation: &str) -> Self;
+
+    /// Parse from Links Notation (LiNo) using the links-notation crate
+    pub fn from_lino(lino: &str) -> Result<Self, ParseError>;
 
     /// Add a link between two nodes
     pub fn add_link(&mut self, source: LinkId, target: LinkId);
@@ -249,12 +277,21 @@ The Weisfeiler-Lehman algorithm iteratively refines node labels based on neighbo
 
 ## Links Theory Background
 
-This library is inspired by [Links Theory](https://habr.com/ru/articles/903430/), which represents all data as doublet-links following the formula **L → L²** (a link connects links).
+This library is inspired by [Links Theory](https://habr.com/en/articles/895896), which represents all data as doublet-links following the formula **L → L²** (a link connects links).
 
 Key concepts:
 - **Doublet-Link**: An ordered pair (source, target) representing a connection
 - **Link Network**: A collection of doublet-links forming a structure
 - **Links Notation (LiNo)**: Human-readable format for describing networks
+
+### Related Projects
+
+This library uses and integrates with the Link Foundation ecosystem:
+
+- **[links-notation](https://github.com/link-foundation/links-notation)** - Parser for Links Notation (LiNo) format, available in Rust, JavaScript, Python, C#, Go, and Java
+- **[link-cli](https://github.com/link-foundation/link-cli)** - CLI tool for manipulating links with query-based operations
+- **[links-client](https://github.com/link-foundation/links-client)** - Client library for doublet-links database access
+- **[doublets-rs](https://github.com/linksplatform/doublets-rs)** - Rust implementation of associative doublet storage (requires nightly Rust)
 
 ## Development
 

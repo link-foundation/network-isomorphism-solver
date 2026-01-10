@@ -10,6 +10,10 @@
 //! replacing traditional graph theory concepts of vertices and edges with a unified
 //! link concept where "a link connects links".
 //!
+//! This library uses the [`links-notation`](https://crates.io/crates/links-notation) crate
+//! for parsing Links Notation (`LiNo`) format, which is the standard notation for describing
+//! link structures.
+//!
 //! # Real-World Applications
 //!
 //! - **Drug Discovery**: Compare molecular structures to identify similar compounds
@@ -18,18 +22,20 @@
 //! - **Social Network Analysis**: Detect isomorphic substructures in user networks
 //! - **Cryptography**: Zero-knowledge proofs relying on graph isomorphism hardness
 //!
-//! # Links Notation Examples
+//! # Links Notation (`LiNo`) Examples
 //!
-//! Networks can be described using Links Notation (LiNo):
+//! Networks can be described using Links Notation from the
+//! [links-notation](https://github.com/link-foundation/links-notation) library:
 //!
 //! ```text
-//! # Molecular structure (benzene ring)
-//! C1 bonds C2
-//! C2 bonds C3
-//! C3 bonds C4
-//! C4 bonds C5
-//! C5 bonds C6
-//! C6 bonds C1
+//! // Doublet format (source target)
+//! (1 2) (2 3) (3 1)
+//!
+//! // Named links
+//! (bond1: C1 C2) (bond2: C2 C3)
+//!
+//! // Nested structures
+//! ((A B) (B C) (C A))
 //! ```
 //!
 //! # Example
@@ -58,6 +64,10 @@ use algorithm::{
     compute_network_hash, compute_wl_signatures, find_all_automorphisms, find_isomorphism_mapping,
     subnetwork_backtrack,
 };
+
+// Re-export links-notation crate for users who want to parse LiNo directly
+pub use links_notation;
+use links_notation::{parse_lino, LiNo, ParseError};
 
 /// Package version (matches Cargo.toml version).
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -197,6 +207,100 @@ impl LinkNetwork {
         }
 
         network
+    }
+
+    /// Creates a link network from Links Notation (`LiNo`) string using the
+    /// [`links-notation`](https://crates.io/crates/links-notation) crate parser.
+    ///
+    /// This method parses proper `LiNo` format: `(source target)` doublets.
+    /// For nested structures, it extracts the top-level doublets.
+    ///
+    /// # Arguments
+    ///
+    /// * `lino` - Links Notation string in `LiNo` format
+    ///
+    /// # Returns
+    ///
+    /// `Ok(LinkNetwork)` if parsing succeeds, `Err(ParseError)` otherwise
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use network_isomorphism_solver::LinkNetwork;
+    ///
+    /// // Parse LiNo doublet format
+    /// let network = LinkNetwork::from_lino("(1 2) (2 3) (3 1)").unwrap();
+    /// assert_eq!(network.node_count(), 3);
+    /// assert_eq!(network.link_count(), 3);
+    ///
+    /// // Parse named links
+    /// let network2 = LinkNetwork::from_lino("(link1: A B) (link2: B C)").unwrap();
+    /// assert_eq!(network2.node_count(), 3);
+    /// assert_eq!(network2.link_count(), 2);
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns `ParseError` if the `LiNo` string cannot be parsed
+    pub fn from_lino(lino: &str) -> Result<Self, ParseError> {
+        let parsed = parse_lino(lino)?;
+        let mut network = Self::new();
+        let mut name_to_id: HashMap<String, LinkId> = HashMap::new();
+        let mut next_id: LinkId = 1;
+
+        // Helper to get or create an ID for a reference name
+        let mut get_id = |name: &str| -> LinkId {
+            *name_to_id.entry(name.to_string()).or_insert_with(|| {
+                let id = next_id;
+                next_id += 1;
+                id
+            })
+        };
+
+        // Extract doublets from the parsed LiNo structure
+        Self::extract_doublets_from_lino(&parsed, &mut network, &mut get_id);
+
+        Ok(network)
+    }
+
+    /// Recursively extracts doublet links from a `LiNo` structure.
+    fn extract_doublets_from_lino<F>(lino: &LiNo<String>, network: &mut Self, get_id: &mut F)
+    where
+        F: FnMut(&str) -> LinkId,
+    {
+        match lino {
+            LiNo::Ref(_) => {
+                // Single reference, not a link
+            }
+            LiNo::Link { values, .. } => {
+                // Check if this is a doublet (exactly 2 values that are both refs)
+                if values.len() == 2 {
+                    if let (LiNo::Ref(source), LiNo::Ref(target)) = (&values[0], &values[1]) {
+                        let source_id = get_id(source);
+                        let target_id = get_id(target);
+                        network.add_link(source_id, target_id);
+                        return;
+                    }
+                }
+
+                // For triplets (source rel target), extract as doublet (source target)
+                if values.len() == 3 {
+                    if let (LiNo::Ref(source), LiNo::Ref(_), LiNo::Ref(target)) =
+                        (&values[0], &values[1], &values[2])
+                    {
+                        let source_id = get_id(source);
+                        let target_id = get_id(target);
+                        network.add_link(source_id, target_id);
+                        return;
+                    }
+                }
+
+                // Recursively process nested links
+                for value in values {
+                    Self::extract_doublets_from_lino(value, network, get_id);
+                }
+            }
+        }
     }
 
     /// Adds a doublet-link to the network.
