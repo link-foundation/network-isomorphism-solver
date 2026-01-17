@@ -1,0 +1,12 @@
+[package]
+name = "lino-api-test"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+links-notation = "0.13.0"
+
+# Note: doublets crate requires nightly Rust due to unstable features
+# Uncomment to test with nightly: rustup run nightly cargo build
+# doublets = "0.1.0-pre"
